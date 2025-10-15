@@ -1,6 +1,6 @@
 # Train Model Examples
 
-This repository provides examples for training machine learning models
+This repository provides examples for training ML/DL models
 
 
 ## License
