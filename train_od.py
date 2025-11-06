@@ -86,10 +86,9 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--pretrained',
+        '--no-pretrained',
         action='store_true',
-        default=True,
-        help='Use pretrained weights'
+        help='Disable pretrained weights (not recommended)'
     )
     
     return parser.parse_args()
@@ -105,6 +104,9 @@ def main():
     except ImportError:
         print("Error: ultralytics not installed. Install it with: pip install ultralytics")
         sys.exit(1)
+    
+    # Use pretrained weights by default (recommended)
+    use_pretrained = not args.no_pretrained
     
     print("=" * 60)
     print("Object Detection Training with YOLO")
@@ -132,7 +134,7 @@ def main():
         name=args.name,
         patience=args.patience,
         workers=args.workers,
-        pretrained=args.pretrained,
+        pretrained=use_pretrained,
     )
     
     print("\n" + "=" * 60)

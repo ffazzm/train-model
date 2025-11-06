@@ -72,10 +72,9 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--pretrained',
+        '--no-pretrained',
         action='store_true',
-        default=True,
-        help='Use pretrained weights'
+        help='Disable pretrained weights (not recommended)'
     )
     
     parser.add_argument(
@@ -131,7 +130,7 @@ def main():
     print(f"Learning rate: {args.lr}")
     print(f"Image size: {args.imgsz}")
     print(f"Device: {args.device}")
-    print(f"Pretrained: {args.pretrained}")
+    print(f"Pretrained: {not args.no_pretrained}")
     print("=" * 60)
     
     # Data transforms
@@ -183,11 +182,16 @@ def main():
     print(f"Training samples: {len(train_dataset)}")
     print(f"Validation samples: {len(val_dataset)}")
     
+    # Use pretrained weights by default unless --pretrained is explicitly set
+    # If --pretrained flag is not used, default to True (recommended)
+    use_pretrained = True  # Default to pretrained for better performance
+    
     # Create model
     print(f"\nCreating model: {args.model}")
+    print(f"Using pretrained weights: {use_pretrained}")
     model = timm.create_model(
         args.model,
-        pretrained=args.pretrained,
+        pretrained=use_pretrained,
         num_classes=num_classes
     )
     model = model.to(args.device)
