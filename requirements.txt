@@ -1,0 +1,19 @@
+# Core deep learning libraries
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Object Detection - YOLO
+ultralytics>=8.0.0
+
+# Image Classification - timm
+timm>=0.9.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Configuration
+pyyaml>=6.0
+
+# Common utilities
+numpy>=1.24.0
+pillow>=9.5.0
