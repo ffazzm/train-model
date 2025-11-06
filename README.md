@@ -87,7 +87,7 @@ python train_general.py --model-type mlp --input-size 784 --num-classes 10 --epo
 ```
 
 **Arguments:**
-- `--model-type`: Type of model (mlp, cnn, rnn, lstm, transformer)
+- `--model-type`: Type of model (mlp, cnn, rnn, lstm)
 - `--input-size`: Input size for the model (default: 784)
 - `--hidden-size`: Hidden layer size (default: 128)
 - `--num-layers`: Number of hidden layers (default: 2)
