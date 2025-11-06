@@ -26,7 +26,7 @@ def parse_args():
         '--model-type',
         type=str,
         default='mlp',
-        choices=['mlp', 'cnn', 'rnn', 'lstm', 'transformer'],
+        choices=['mlp', 'cnn', 'rnn', 'lstm'],
         help='Type of model architecture'
     )
     

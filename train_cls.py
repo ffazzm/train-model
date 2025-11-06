@@ -182,9 +182,8 @@ def main():
     print(f"Training samples: {len(train_dataset)}")
     print(f"Validation samples: {len(val_dataset)}")
     
-    # Use pretrained weights by default unless --pretrained is explicitly set
-    # If --pretrained flag is not used, default to True (recommended)
-    use_pretrained = True  # Default to pretrained for better performance
+    # Use pretrained weights by default (recommended)
+    use_pretrained = not args.no_pretrained
     
     # Create model
     print(f"\nCreating model: {args.model}")
