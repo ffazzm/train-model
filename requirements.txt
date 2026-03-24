@@ -1,0 +1,19 @@
+# YOLO (Ultralytics)
+ultralytics>=8.3.0
+
+# Image Classification (HuggingFace + PyTorch)
+torch>=2.2.0
+torchvision>=0.17.0
+transformers>=4.40.0
+accelerate>=0.29.0
+
+# PaddleOCR
+# Install PaddlePaddle first (GPU):
+#   pip install paddlepaddle-gpu -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
+# Then:
+paddleocr>=2.7.0
+PyYAML>=6.0
+
+# Shared utilities
+tqdm>=4.66.0
+Pillow>=10.0.0
