@@ -1,19 +1,23 @@
-# YOLO (Ultralytics)
-ultralytics>=8.3.0
+# =========================================================================
+# Core (PyTorch) — used by image classification
+# For GPU, install a CUDA build from https://pytorch.org instead of these.
+# =========================================================================
+torch==2.5.1
+torchvision==0.20.1
 
-# Image Classification (HuggingFace + PyTorch)
-torch>=2.2.0
-torchvision>=0.17.0
-transformers>=4.40.0
-accelerate>=0.29.0
+# Image Classification (timm pretrained models)
+timm==1.0.12
+
+# YOLO Object Detection (Ultralytics)
+ultralytics==8.3.55
 
 # PaddleOCR
-# Install PaddlePaddle first (GPU):
-#   pip install paddlepaddle-gpu -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
-# Then:
-paddleocr>=2.7.0
-PyYAML>=6.0
+# Install PaddlePaddle first (choose CPU or a matching CUDA build):
+#   CPU : pip install paddlepaddle==2.6.2
+#   GPU : pip install paddlepaddle-gpu==2.6.2 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
+paddleocr==2.9.1
 
 # Shared utilities
-tqdm>=4.66.0
-Pillow>=10.0.0
+PyYAML==6.0.2
+tqdm==4.67.1
+Pillow==11.0.0
