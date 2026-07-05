@@ -73,9 +73,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Fine-tune image classifier (timm)")
     parser.add_argument("--data_dir",   type=str, required=True,
                         help="Root directory with train/ and val/ subfolders")
-    parser.add_argument("--model_name", type=str, default="resnet50",
-                        help="timm model name (e.g. resnet50, vit_base_patch16_224, "
-                             "convnext_tiny, efficientnet_b0)")
+    parser.add_argument("--model_name", type=str, default="tf_efficientnetv2_b0.in1k",
+                        help="timm model name (e.g. tf_efficientnetv2_b0.in1k, resnet50, "
+                             "vit_base_patch16_224, convnext_tiny, efficientnet_b0)")
     parser.add_argument("--output_dir", type=str, default="runs/classifier",
                         help="Where to save checkpoints and final model")
     parser.add_argument("--epochs",     type=int,   default=10)
@@ -113,7 +113,7 @@ def parse_args():
                              "(misclassifications prioritized). 0 disables.")
     parser.add_argument("--device",     type=str, default="",
                         help="cuda / cpu (auto-detected if empty)")
-    return parser.parse_args()
+    return parser.parse_args()  
 
 
 def build_augmentation(input_size, mean, std):
@@ -125,27 +125,53 @@ def build_augmentation(input_size, mean, std):
     model's expected square crop; `mean` / `std` come from the pretrained config
     so normalization stays consistent with the val transform.
     """
+    # return T.Compose([
+    #     # Crop augmentation disabled for now: keep the whole frame so localized
+    #     # accident cues are never cropped away. Plain (square) resize to the
+    #     # model's input size instead. Re-enable RandomResizedCrop later if wanted.
+    #     # NOTE: this forces a square aspect ratio (mild distortion) — acceptable
+    #     # while we isolate the crop's effect.
+    #     T.RandomResizedCrop(input_size, scale=(0.9, 1.0)),
+    #     # T.Resize((input_size, input_size)),
+    #     T.RandomHorizontalFlip(p=0.5),                 # accidents are mirror-symmetric
+    #     # Camera-angle variance (CCTV / dashcam tilt). No vertical flip: an
+    #     # upside-down car would confuse the "normal" class.
+    #     # T.RandomApply([T.RandomAffine(degrees=12, translate=(0.05, 0.05),
+    #     #                               scale=(0.95, 1.05), shear=5)], p=0.5),
+    #     # Weather / lighting / day-night variance; small hue shift only.
+    #     # T.RandomApply([T.ColorJitter(brightness=0.3, contrast=0.3,
+    #     #                              saturation=0.3, hue=0.05)], p=0.7),
+    #     T.RandomPerspective(distortion_scale=0.15, p=0.4),
+    #     T.RandomApply([T.RandomAffine(degrees=10, translate=(0.02, 0.02), scale=(0.98, 1.02))], p=0.4),
+    #     T.RandomApply([T.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0))], p=0.3),
+    #     T.RandomAdjustSharpness(sharpness_factor=2, p=0.3),
+    #     # T.RandomApply([T.GaussianBlur(kernel_size=3, sigma=(0.1, 1.5))], p=0.2),
+    #     T.ToTensor(),
+    #     T.Normalize(mean=mean, std=std),
+    #     # Low prob / small area so it rarely erases the damage evidence.
+    #     T.RandomErasing(p=0.1, scale=(0.02, 0.1)),
+    # ])
     return T.Compose([
-        # Crop augmentation disabled for now: keep the whole frame so localized
-        # accident cues are never cropped away. Plain (square) resize to the
-        # model's input size instead. Re-enable RandomResizedCrop later if wanted.
-        # NOTE: this forces a square aspect ratio (mild distortion) — acceptable
-        # while we isolate the crop's effect.
-        # T.RandomResizedCrop(input_size, scale=(0.8, 1.0), ratio=(0.75, 1.3333)),
-        T.Resize((input_size, input_size)),
-        T.RandomHorizontalFlip(p=0.5),                 # accidents are mirror-symmetric
-        # Camera-angle variance (CCTV / dashcam tilt). No vertical flip: an
-        # upside-down car would confuse the "normal" class.
-        T.RandomApply([T.RandomAffine(degrees=12, translate=(0.05, 0.05),
-                                      scale=(0.95, 1.05), shear=5)], p=0.5),
-        # Weather / lighting / day-night variance; small hue shift only.
-        T.RandomApply([T.ColorJitter(brightness=0.3, contrast=0.3,
-                                     saturation=0.3, hue=0.05)], p=0.7),
-        T.RandomApply([T.GaussianBlur(kernel_size=3, sigma=(0.1, 1.5))], p=0.2),
+        # 1. Pertahankan aspect ratio asli objek crop (bisa pakai padding ke square sebelum resize)
+        # Di bawah ini alternatif simpel jika tidak pakai custom padding:
+        T.Resize((input_size, input_size)), 
+        
+        # 2. Geometri & Distorsi Kamera
+        T.RandomHorizontalFlip(p=0.5),
+        T.RandomPerspective(distortion_scale=0.15, p=0.3),
+        T.RandomApply([T.RandomAffine(degrees=10, translate=(0.02, 0.02), scale=(0.95, 1.05))], p=0.3),
+        
+        # 3. Variasi Cuaca, Cahaya, & Sensor CCTV
+        T.RandomApply([T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2, hue=0.03)], p=0.6),
+        T.RandomApply([T.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0))], p=0.2),
+        T.RandomAdjustSharpness(sharpness_factor=1.5, p=0.3),
+        
+        # 4. Normalisasi & Tensor
         T.ToTensor(),
         T.Normalize(mean=mean, std=std),
-        # Low prob / small area so it rarely erases the damage evidence.
-        # T.RandomErasing(p=0.1, scale=(0.02, 0.1)),
+        
+        # 5. Regularisasi (Kecilkan probabilitas agar tidak menutupi defect utama)
+        T.RandomErasing(p=0.1, scale=(0.01, 0.05), ratio=(0.3, 3.3)),
     ])
 
 
@@ -170,6 +196,19 @@ def cosine_warmup_scheduler(optimizer, warmup_steps, total_steps):
         progress = float(step - warmup_steps) / float(max(1, total_steps - warmup_steps))
         return 0.5 * (1.0 + math.cos(math.pi * progress))
     return LambdaLR(optimizer, lr_lambda)
+
+
+def forward_logits(model, images):
+    """Run the model and return a single logits tensor.
+
+    Distillation architectures (e.g. LeViT) return a (head, head_dist) tuple
+    while training; average them so the rest of the pipeline sees one tensor.
+    In eval mode timm already averages the heads and returns a single tensor.
+    """
+    out = model(images)
+    if isinstance(out, (tuple, list)):
+        out = sum(out) / len(out)
+    return out
 
 
 def accuracy(logits, labels):
@@ -238,7 +277,7 @@ def train_one_epoch(model, loader, criterion, optimizer, scheduler, device,
         images = images.to(device)
         labels = labels.to(device)
 
-        logits = model(images)
+        logits = forward_logits(model, images)
         loss   = criterion(logits, labels)
 
         optimizer.zero_grad()
@@ -265,7 +304,7 @@ def evaluate(model, loader, criterion, device, desc="Eval"):
     for images, labels in tqdm(loader, desc=desc, leave=False, dynamic_ncols=True):
         images = images.to(device)
         labels = labels.to(device)
-        logits = model(images)
+        logits = forward_logits(model, images)
         total_loss += criterion(logits, labels).item()
         total_acc  += accuracy(logits, labels)
         all_preds.append(logits.argmax(dim=-1).cpu())
@@ -335,7 +374,7 @@ def save_prediction_grid(model, loader, class_names, mean, std, device, dst,
 
     wrong, correct = [], []
     for images, labels in loader:
-        preds = model(images.to(device)).argmax(dim=-1).cpu()
+        preds = forward_logits(model, images.to(device)).argmax(dim=-1).cpu()
         for img, pred, true in zip(images, preds, labels):
             denorm = (img * std_t + mean_t).clamp(0, 1)  # undo Normalize for display
             item = (denorm, int(pred), int(true))
@@ -386,8 +425,13 @@ def set_backbone_frozen(model, frozen):
     """Freeze/unfreeze all params, always keeping the classifier head trainable."""
     for param in model.parameters():
         param.requires_grad = not frozen
-    for param in model.get_classifier().parameters():
-        param.requires_grad = True
+    # get_classifier() returns a single module for most models, but a tuple of
+    # heads for distillation architectures (e.g. LeViT -> (head, head_dist)).
+    head = model.get_classifier()
+    heads = head if isinstance(head, (tuple, list)) else (head,)
+    for h in heads:
+        for param in h.parameters():
+            param.requires_grad = True
 
 
 def build_optimizer_scheduler(model, lr, weight_decay, epochs_in_phase,
